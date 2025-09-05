@@ -141,15 +141,6 @@ Al agregar, cambiar o eliminar alguna variable, en los archivos `wrangler.jsonc`
 pnpm wrangler types
 ```
 
-```txt
-npm install
-npm run dev
-```
-
-```txt
-npm run deploy
-```
-
 [For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
 
 ```txt
