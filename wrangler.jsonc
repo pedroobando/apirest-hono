@@ -15,6 +15,7 @@
 	// ],
 	"vars": {
 		"MY_VAR": "my-variable",
+		"JWT_EXPIRES": 30,
 		"CORS_ORIGIN": ["http://localhost:3000"]
 	},
 	// "kv_namespaces": [

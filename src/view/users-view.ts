@@ -58,10 +58,10 @@ userRoute.get('/', authMiddleware, async (c) => {
     const user = await findUserAll(db);
 
     if (!user.length) {
-      return c.json({ error: 'Usuario no encontrado' }, 404);
+      return c.json({ error: 'Usuarios no encontrado' }, 404);
     }
 
-    return c.json({ user });
+    return c.text(`hola mundo - ${JSON.stringify(user, null, 2)}`);
   } catch (error) {
     return c.json({ error: 'Error interno del servidor' }, 500);
   }

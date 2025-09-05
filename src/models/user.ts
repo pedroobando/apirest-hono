@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DzD1Database } from '../db/conndb';
+import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
+import { DzD1Database } from '../db/conndb';
 
 import { user } from '../db/schema';
 
@@ -16,16 +17,17 @@ export const createUser = async (
   db: DzD1Database,
   userData: Omit<User, 'id' | 'active'>,
 ): Promise<Omit<User, 'password' | 'createAt' | 'updateAt'>> => {
-  const newUser: User = {
-    id: uuidv4(),
+  const newUser = {
+    // id: uuidv4(),
     ...userData,
     email: userData.email.toLowerCase(),
+    password: bcrypt.hashSync(userData.password),
     active: true,
   };
 
   const newUserDb = await db
     .insert(user)
-    .values({ ...newUser, password: newUser.password })
+    .values({ ...newUser })
     .returning();
 
   return newUserDb[0];
@@ -36,10 +38,9 @@ export const findUserByEmail = async (db: DzD1Database, email: string): Promise<
     const user = await db.query.user.findFirst({
       where: (user, { eq }) => eq(user.email, email),
     });
-    console.log(user);
+
     return user;
   } catch (error) {
-    console.log(error);
     return undefined;
   }
 };
@@ -53,6 +54,14 @@ export const findUserById = async (db: DzD1Database, id: string): Promise<User |
 
 export const findUserAll = async (db: DzD1Database): Promise<Omit<User, 'password'>[]> => {
   const allUser = await db.query.user.findMany({
+    columns: {
+      id: true,
+      fullname: true,
+      email: true,
+      active: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: (user, { asc }) => [asc(user.fullname)],
   });
 
@@ -68,12 +77,19 @@ export const updateUser = async (
   fullname: string;
   email: string;
   active: boolean;
+  createdAt: Date;
 } | null> => {
-  const updUser: { id: string; fullname: string; email: string; active: boolean }[] = await db
+  const updUser: { id: string; fullname: string; email: string; active: boolean; createdAt: Date }[] = await db
     .update(user)
     .set({ ...updates })
     .where(eq(user.id, id))
-    .returning({ id: user.id, fullname: user.fullname, email: user.email, active: user.active });
+    .returning({
+      id: user.id,
+      fullname: user.fullname,
+      email: user.email,
+      active: user.active,
+      createdAt: user.createdAt,
+    });
 
   return updUser[0];
 };

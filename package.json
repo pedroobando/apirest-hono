@@ -10,6 +10,7 @@
     "db:up": "drizzle-kit up:sqlite"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.9.6",
     "uuid": "^11.1.0"

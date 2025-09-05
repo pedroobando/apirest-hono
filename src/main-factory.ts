@@ -10,9 +10,11 @@ type Env = {
   Bindings: {
     DB: D1Database;
     JWT_SECRET: string;
+    JWT_EXPIRES: number;
   };
   Variables: {
     db: DrizzleD1Database<typeof schema> & { $client: D1Database };
+    user: { id: string; name: string } | undefined;
   };
 };
 

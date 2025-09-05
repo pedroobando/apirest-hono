@@ -1,4 +1,5 @@
-import { generarPayload, generateToken } from '../utils/jwt';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../utils/jwt';
 import { createUser, findUserByEmail, User } from '../models/user';
 import { dbFactory } from '../main-factory';
 
@@ -8,7 +9,7 @@ const authRoute = dbFactory.createApp();
 authRoute.post('/register', async (c) => {
   try {
     const { fullname, email, password } = await c.req.json<Omit<User, 'id' | 'active'>>();
-    const { JWT_SECRET } = c.env;
+    const { JWT_SECRET, JWT_EXPIRES } = c.env;
 
     // Validaciones básicas
     if (!fullname || !email || !password) {
@@ -26,7 +27,7 @@ authRoute.post('/register', async (c) => {
     const user = await createUser(db, { fullname, email, password });
 
     // Generar token JWT
-    const token = await generateToken(JWT_SECRET, { id: user.id, email: user.email });
+    const token = await generateToken({ id: user.id, email: user.email }, JWT_SECRET, JWT_EXPIRES);
 
     return c.json(
       {
@@ -50,8 +51,9 @@ authRoute.post('/register', async (c) => {
 authRoute.post('/login', async (c) => {
   try {
     const { email, password } = await c.req.json<{ email: string; password: string }>();
-    const { JWT_SECRET } = c.env;
+    const { JWT_SECRET, JWT_EXPIRES } = c.env;
 
+    // c.set('user', undefined);
     if (!email || !password) {
       return c.json({ error: 'Email y contraseña son obligatorios' }, 400);
     }
@@ -59,7 +61,7 @@ authRoute.post('/login', async (c) => {
     // Buscar usuario
     const db = c.get('db');
     const user = await findUserByEmail(db, email);
-    if (!user || user.password !== password) {
+    if (!user || !bcrypt.compareSync(password, user.password)) {
       return c.json({ error: 'Credenciales inválidas' }, 401);
     }
 
@@ -68,8 +70,8 @@ authRoute.post('/login', async (c) => {
     }
 
     // Generar token JWT
-    const payload = generarPayload({ id: user.id, email: user.email, roll: 'admin' });
-    const token = await generateToken(JWT_SECRET, payload);
+    const token = await generateToken({ id: user.id, email: user.email }, JWT_SECRET, JWT_EXPIRES);
+    c.set('user', { id: user.id, name: user.fullname });
 
     return c.json({
       message: 'Login exitoso',
