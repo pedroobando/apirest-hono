@@ -2,19 +2,25 @@ import { Hono } from 'hono';
 import { env } from 'hono/adapter';
 import { generateToken } from '../utils/jwt';
 import { createUser, findUserByEmail, User } from '../models/user';
+import { DrizzleD1Database } from 'drizzle-orm/d1';
+import * as schema from '../db/schema';
 
-// export type Env = {
-//   JWT_SECRET2: string;
-// };
-// const authRoute = new Hono<{ Bindings: Env }>();
+type Env = {
+  JWT_SECRET: string;
+  // DB: D1Database;
+};
 
-const authRoute = new Hono();
+type Variables = {
+  db2: DrizzleD1Database<typeof schema>;
+};
+
+const authRoute = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Registro de usuario
 authRoute.post('/register', async (c) => {
   try {
     const { fullname, email, password } = await c.req.json<Omit<User, 'id' | 'active'>>();
-    const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
+    const { JWT_SECRET } = c.env;
 
     // Validaciones básicas
     if (!fullname || !email || !password) {
@@ -27,7 +33,8 @@ authRoute.post('/register', async (c) => {
     }
 
     // Crear usuario (en una app real, la contraseña debería estar hasheada)
-    const user = createUser({ fullname, email, password });
+    const db = c.get('db2');
+    const user = await createUser(db, { fullname, email, password });
 
     // Generar token JWT
     const token = await generateToken(JWT_SECRET, { id: user.id, email: user.email });

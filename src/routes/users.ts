@@ -1,11 +1,16 @@
 import { Hono } from 'hono';
+// import { drizzle } from 'drizzle-orm/d1';
 import { authMiddleware } from '../middleware/auth';
 import { findUserById, updateUser, deleteUser, User, findUserAll } from '../models/user';
 
-const userRoute = new Hono();
+export type Env = {
+  MY_VAR: string;
+  DB: D1Database;
+};
+
+const userRoute = new Hono<{ Bindings: Env }>();
 
 // Obtener perfil de usuario (requiere autenticación)
-
 userRoute.get('/:id', authMiddleware, async (c) => {
   try {
     // const jwtPayload = c.get('jwtPayload');
@@ -30,7 +35,7 @@ userRoute.get('/:id', authMiddleware, async (c) => {
 
 userRoute.get('/', async (c) => {
   try {
-    const user = findUserAll();
+    const user = await findUserAll(c.env.DB);
 
     if (!user.length) {
       return c.json({ error: 'Usuario no encontrado' }, 404);

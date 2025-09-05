@@ -1,4 +1,3 @@
-import { Context } from 'hono';
 import { verifyToken } from '../utils/jwt';
 
 import { createFactory } from 'hono/factory';
