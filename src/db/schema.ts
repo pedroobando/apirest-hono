@@ -8,7 +8,7 @@ export const user = sqliteTable('user', {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   fullname: text('fullname').notNull(),
-  email: text('email').notNull(),
+  email: text('email').unique('email').notNull(),
   password: text().notNull(),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
 

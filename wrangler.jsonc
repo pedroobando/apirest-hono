@@ -14,7 +14,8 @@
 	//   "nodejs_compat"
 	// ],
 	"vars": {
-		"MY_VAR": "my-variable"
+		"MY_VAR": "my-variable",
+		"CORS_ORIGIN": ["http://localhost:3000"]
 	},
 	// "kv_namespaces": [
 	//   {

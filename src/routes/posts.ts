@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth-midlleware';
 import { createPost, findPostsByUser, updatePost, deletePost, Post } from '../models/post';
 
 const postsRoute = new Hono();

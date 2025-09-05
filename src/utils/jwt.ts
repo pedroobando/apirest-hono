@@ -11,3 +11,10 @@ export const verifyToken = async (JWT_SECRET: string = JWT_SECRET_DUMMY, token: 
 };
 
 export const decodetoken = (tokenToDecode: string) => decode(tokenToDecode);
+
+export const generarPayload = (payload: any) => {
+  return {
+    ...payload,
+    exp: Math.floor(Date.now() / 1000) + 60 * 5, // Token expires in 5 minutes
+  };
+};

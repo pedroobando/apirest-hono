@@ -1,9 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
+import { DzD1Database } from '../db/conndb';
+import { eq } from 'drizzle-orm';
 
 import { user } from '../db/schema';
-import { createDb } from '../db/conndb';
-import { DrizzleD1Database } from 'drizzle-orm/d1';
-import * as schema from '../db/schema';
 
 export interface User {
   id: string;
@@ -13,59 +12,78 @@ export interface User {
   active: boolean;
 }
 
-// Almacenamiento en memoria (temporal)
-export const users: User[] = [];
-
 export const createUser = async (
-  db: DrizzleD1Database<typeof schema>,
+  db: DzD1Database,
   userData: Omit<User, 'id' | 'active'>,
-): Promise<User> => {
+): Promise<Omit<User, 'password' | 'createAt' | 'updateAt'>> => {
   const newUser: User = {
     id: uuidv4(),
     ...userData,
+    email: userData.email.toLowerCase(),
     active: true,
   };
-  users.push(newUser);
 
-  // const db = drizzle(DB);
-  // const db = getDb(DB);
-  // const db = createDb(DB);
   const newUserDb = await db
     .insert(user)
-    .values({ email: newUser.email, fullname: newUser.fullname, password: newUser.password, active: true });
+    .values({ ...newUser, password: newUser.password })
+    .returning();
 
-  console.log(newUserDb.results);
-
-  return newUser;
+  return newUserDb[0];
 };
 
-export const findUserByEmail = (email: string): User | undefined => {
-  return users.find((user) => user.email === email);
+export const findUserByEmail = async (db: DzD1Database, email: string): Promise<User | undefined> => {
+  try {
+    const user = await db.query.user.findFirst({
+      where: (user, { eq }) => eq(user.email, email),
+    });
+    console.log(user);
+    return user;
+  } catch (error) {
+    console.log(error);
+    return undefined;
+  }
 };
 
-export const findUserById = (id: string): User | undefined => {
-  return users.find((user) => user.id === id);
+export const findUserById = async (db: DzD1Database, id: string): Promise<User | undefined> => {
+  const user = await db.query.user.findFirst({
+    where: (user, { eq }) => eq(user.id, id),
+  });
+  return user;
 };
 
-export const findUserAll = async (DB: D1Database): Promise<Omit<User, 'password'>[]> => {
-  const db = createDb(DB);
-  const allUser = await db.select().from(user).orderBy(user.fullname);
+export const findUserAll = async (db: DzD1Database): Promise<Omit<User, 'password'>[]> => {
+  const allUser = await db.query.user.findMany({
+    orderBy: (user, { asc }) => [asc(user.fullname)],
+  });
+
   return allUser;
-  // return users.map(({ password, ...restUser }) => restUser);
 };
 
-export const updateUser = (id: string, updates: Partial<Omit<User, 'id'>>): User | null => {
-  const userIndex = users.findIndex((user) => user.id === id);
-  if (userIndex === -1) return null;
+export const updateUser = async (
+  db: DzD1Database,
+  id: string,
+  updates: Partial<Omit<User, 'id'>>,
+): Promise<{
+  id: string;
+  fullname: string;
+  email: string;
+  active: boolean;
+} | null> => {
+  const updUser: { id: string; fullname: string; email: string; active: boolean }[] = await db
+    .update(user)
+    .set({ ...updates })
+    .where(eq(user.id, id))
+    .returning({ id: user.id, fullname: user.fullname, email: user.email, active: user.active });
 
-  users[userIndex] = { ...users[userIndex], ...updates };
-  return users[userIndex];
+  return updUser[0];
 };
 
-export const deleteUser = (id: string): boolean => {
-  const userIndex = users.findIndex((user) => user.id === id);
-  if (userIndex === -1) return false;
+export const deleteUser = async (db: DzD1Database, id: string): Promise<boolean> => {
+  const fUser = await db.query.user.findFirst({
+    where: (user, { eq }) => eq(user.id, id),
+  });
 
-  users.splice(userIndex, 1);
+  if (!fUser) return false;
+  await db.delete(user).where(eq(user.id, id));
   return true;
 };

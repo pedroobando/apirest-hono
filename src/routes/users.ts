@@ -1,22 +1,16 @@
-import { Hono } from 'hono';
-// import { drizzle } from 'drizzle-orm/d1';
-import { authMiddleware } from '../middleware/auth';
-import { findUserById, updateUser, deleteUser, User, findUserAll } from '../models/user';
+import { dbFactory } from '../main-factory';
 
-export type Env = {
-  MY_VAR: string;
-  DB: D1Database;
-};
+import { authMiddleware } from '../middleware/auth-midlleware';
+import { findUserById, updateUser, deleteUser, User, findUserAll, findUserByEmail } from '../models/user';
 
-const userRoute = new Hono<{ Bindings: Env }>();
+const userRoute = dbFactory.createApp();
 
 // Obtener perfil de usuario (requiere autenticación)
 userRoute.get('/:id', authMiddleware, async (c) => {
   try {
-    // const jwtPayload = c.get('jwtPayload');
-
     const id = c.req.param('id');
-    const user = findUserById(id);
+    const db = c.get('db');
+    const user = await findUserById(db, id);
 
     if (!user) {
       return c.json({ error: 'Usuario no encontrado' }, 404);
@@ -33,9 +27,31 @@ userRoute.get('/:id', authMiddleware, async (c) => {
   }
 });
 
-userRoute.get('/', async (c) => {
+userRoute.get('/email/:email', authMiddleware, async (c) => {
   try {
-    const user = await findUserAll(c.env.DB);
+    const email = c.req.param('email');
+    const db = c.get('db');
+    const user = await findUserByEmail(db, email.toLowerCase());
+
+    if (!user) {
+      return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    return c.json({
+      id: user.id,
+      fullname: user.fullname,
+      email: user.email,
+      active: user.active,
+    });
+  } catch (error) {
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+});
+
+userRoute.get('/', authMiddleware, async (c) => {
+  try {
+    const db = c.get('db');
+    const user = await findUserAll(db);
 
     if (!user.length) {
       return c.json({ error: 'Usuario no encontrado' }, 404);
@@ -48,18 +64,14 @@ userRoute.get('/', async (c) => {
 });
 
 // Actualizar usuario (requiere autenticación)
-userRoute.put('/:id', authMiddleware, async (c) => {
+userRoute.patch('/:id', authMiddleware, async (c) => {
   try {
     const { id } = c.req.param();
-    const userData = await c.req.json();
-    const updates = await c.req.json<Partial<Omit<User, 'id'>>>();
 
-    // No permitir actualizar el campo active mediante esta ruta
-    if ('active' in updates) {
-      delete updates.active;
-    }
+    const { password, active, ...restUpdate } = await c.req.json<Partial<Omit<User, 'id'>>>();
 
-    const updatedUser = updateUser(id, updates);
+    const db = c.get('db');
+    const updatedUser = await updateUser(db, id, restUpdate);
 
     if (!updatedUser) {
       return c.json({ error: 'Usuario no encontrado' }, 404);
@@ -67,14 +79,10 @@ userRoute.put('/:id', authMiddleware, async (c) => {
 
     return c.json({
       message: 'Usuario actualizado exitosamente',
-      user: {
-        id: updatedUser.id,
-        fullname: updatedUser.fullname,
-        email: updatedUser.email,
-        active: updatedUser.active,
-      },
+      user: updatedUser,
     });
   } catch (error) {
+    console.log(error);
     return c.json({ error: 'Error interno del servidor' }, 500);
   }
 });
@@ -83,7 +91,8 @@ userRoute.put('/:id', authMiddleware, async (c) => {
 userRoute.delete('/:id', authMiddleware, async (c) => {
   try {
     const { id } = c.req.param();
-    const deleted = deleteUser(id);
+    const db = c.get('db');
+    const deleted = await deleteUser(db, id);
 
     if (!deleted) {
       return c.json({ error: 'Usuario no encontrado' }, 404);

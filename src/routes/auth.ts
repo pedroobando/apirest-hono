@@ -1,20 +1,8 @@
-import { Hono } from 'hono';
-import { env } from 'hono/adapter';
-import { generateToken } from '../utils/jwt';
+import { generarPayload, generateToken } from '../utils/jwt';
 import { createUser, findUserByEmail, User } from '../models/user';
-import { DrizzleD1Database } from 'drizzle-orm/d1';
-import * as schema from '../db/schema';
+import { dbFactory } from '../main-factory';
 
-type Env = {
-  JWT_SECRET: string;
-  // DB: D1Database;
-};
-
-type Variables = {
-  db2: DrizzleD1Database<typeof schema>;
-};
-
-const authRoute = new Hono<{ Bindings: Env; Variables: Variables }>();
+const authRoute = dbFactory.createApp();
 
 // Registro de usuario
 authRoute.post('/register', async (c) => {
@@ -28,12 +16,13 @@ authRoute.post('/register', async (c) => {
     }
 
     // Verificar si el usuario ya existe
-    if (findUserByEmail(email)) {
+    const db = c.get('db');
+    const findUser = await findUserByEmail(db, email);
+    if (findUser) {
       return c.json({ error: 'El usuario ya existe' }, 409);
     }
 
     // Crear usuario (en una app real, la contraseña debería estar hasheada)
-    const db = c.get('db2');
     const user = await createUser(db, { fullname, email, password });
 
     // Generar token JWT
@@ -61,14 +50,15 @@ authRoute.post('/register', async (c) => {
 authRoute.post('/login', async (c) => {
   try {
     const { email, password } = await c.req.json<{ email: string; password: string }>();
-    const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
+    const { JWT_SECRET } = c.env;
 
     if (!email || !password) {
       return c.json({ error: 'Email y contraseña son obligatorios' }, 400);
     }
 
     // Buscar usuario
-    const user = findUserByEmail(email);
+    const db = c.get('db');
+    const user = await findUserByEmail(db, email);
     if (!user || user.password !== password) {
       return c.json({ error: 'Credenciales inválidas' }, 401);
     }
@@ -78,7 +68,8 @@ authRoute.post('/login', async (c) => {
     }
 
     // Generar token JWT
-    const token = await generateToken(JWT_SECRET, { id: user.id, email: user.email });
+    const payload = generarPayload({ id: user.id, email: user.email, roll: 'admin' });
+    const token = await generateToken(JWT_SECRET, payload);
 
     return c.json({
       message: 'Login exitoso',
