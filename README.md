@@ -133,6 +133,14 @@ Genera en remotamente la base de datos en cloudflare
 pnpm wrangler d1 execute blogDB  --remote --file=./drizzle/migrations/0000_naive_phil_sheldon.sql
 ```
 
+### Modificacion variable
+
+Al agregar, cambiar o eliminar alguna variable, en los archivos `wrangler.jsonc` o `dev.vars`, recuerde actualizar el archivo `worker-configuration.d.ts`, mediante el comando
+
+```
+pnpm wrangler types
+```
+
 ```txt
 npm install
 npm run dev
