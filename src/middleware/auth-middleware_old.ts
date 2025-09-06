@@ -6,12 +6,13 @@ export type Env = {
   JWT_SECRET: string;
   Variables: {
     foo: string;
+    jwtPayload: string;
   };
 };
 
 const authFactory = createFactory<{ Bindings: Env }>();
 
-export const authMiddleware = authFactory.createMiddleware(async (c, next) => {
+export const authMiddleware_old = authFactory.createMiddleware(async (c, next) => {
   const authHeader = c.req.header('Authorization');
 
   if (!authHeader || !authHeader.startsWith('Bearer')) {

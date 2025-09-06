@@ -71,7 +71,9 @@ authRoute.post('/login', async (c) => {
 
     // Generar token JWT
     const token = await generateToken({ id: user.id, email: user.email }, JWT_SECRET, JWT_EXPIRES);
-    c.set('user', { id: user.id, name: user.fullname });
+
+    // const pepe = c.get('user');
+    // console.log('pepe:', pepe);
 
     return c.json({
       message: 'Login exitoso',

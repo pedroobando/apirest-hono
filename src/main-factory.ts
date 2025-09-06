@@ -14,7 +14,6 @@ type Env = {
   };
   Variables: {
     db: DrizzleD1Database<typeof schema> & { $client: D1Database };
-    user: { id: string; name: string } | undefined;
   };
 };
 
@@ -30,6 +29,7 @@ export const dbFactory = createFactory<Env>({
     app.use(async (c, next) => {
       const db = drizzle(c.env.DB, { schema });
       c.set('db', db);
+
       await next();
     });
   },

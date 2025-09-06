@@ -1,25 +1,29 @@
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth-midlleware';
+import { dbFactory } from '../main-factory';
+import { authMiddleware } from '../middleware/auth-middleware';
+
 import { createPost, findPostsByUser, updatePost, deletePost, Post } from '../models/post';
 
-const postsRoute = new Hono();
+const postsRoute = dbFactory.createApp();
 
 // Crear un nuevo post (requiere autenticación)
 postsRoute.post('/', authMiddleware, async (c) => {
   try {
-    const userData = c.get('jwtPayload');
-
-    const { title, content } = await c.req.json<Omit<Post, 'id' | 'active' | 'createdAt' | 'updatedAt' | 'userId'>>();
+    const { title, content } = await c.req.json<Omit<Post, 'active' | 'createdAt' | 'updatedAt' | 'authorId'>>();
 
     if (!title || !content) {
       return c.json({ error: 'Título y contenido son obligatorios' }, 400);
     }
 
-    const newPost = createPost({
+    const db = c.get('db');
+    const user = c.get('jwtPayload')!;
+
+    const newPost = await createPost(db, {
       title,
       content,
-      userId: userData.id,
+      authorId: user.id,
     });
+
+    if (!newPost) return c.json({ error: 'Error creando el post.!' }, 500);
 
     return c.json(
       {
@@ -31,12 +35,13 @@ postsRoute.post('/', authMiddleware, async (c) => {
           active: newPost.active,
           createdAt: newPost.createdAt,
           updatedAt: newPost.updatedAt,
-          userId: newPost.userId,
+          authorId: newPost.authorId,
         },
       },
       201,
     );
   } catch (error) {
+    console.log(error);
     return c.json({ error: 'Error interno del servidor' }, 500);
   }
 });
@@ -44,8 +49,10 @@ postsRoute.post('/', authMiddleware, async (c) => {
 // Obtener todos los posts del usuario (requiere autenticación)
 postsRoute.get('/', authMiddleware, async (c) => {
   try {
-    const userData = c.get('jwtPayload');
-    const userPosts = findPostsByUser(userData.id);
+    const db = c.get('db');
+    const user = c.get('jwtPayload')!;
+
+    const userPosts = await findPostsByUser(db, user.id);
 
     return c.json({
       posts: userPosts.map((post) => ({
@@ -55,7 +62,7 @@ postsRoute.get('/', authMiddleware, async (c) => {
         active: post.active,
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
-        userId: post.userId,
+        authorId: post.authorId,
       })),
     });
   } catch (error) {
@@ -66,36 +73,35 @@ postsRoute.get('/', authMiddleware, async (c) => {
 // Actualizar un post (requiere autenticación)
 postsRoute.put('/:id', authMiddleware, async (c) => {
   try {
-    const userData = c.get('jwtPayload');
-    const postId = c.req.param('id');
-    const { title, content, active } = await c.req.json<
-      Partial<Omit<Post, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
-    >();
+    const { id } = c.req.param();
+    const { content, active, title } = await c.req.json<Partial<Omit<Post, 'id' | 'authorId'>>>();
 
+    // const { title, content, active } = await c.req.json<
+    //   Partial<Omit<Post, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+    // >();
+
+    const db = c.get('db');
     // Verificar que el post pertenezca al usuario
-    const userPosts = findPostsByUser(userData.id);
-    const post = userPosts.find((p) => p.id === postId);
-
-    if (!post) {
-      return c.json({ error: 'Post no encontrado' }, 404);
+    const userPost = await findPostsByUser(db, id);
+    if (!userPost) {
+      return c.json({ error: 'Posts no encontrado' });
     }
 
-    const updatedPost = updatePost(postId, { title, content, active });
-
-    if (!updatedPost) {
-      return c.json({ error: 'Error al actualizar el post' }, 500);
+    const updPost = await updatePost(db, id, { content, active, title });
+    if (!updPost) {
+      return c.json({ error: `Error al actualizar el post - ${id}` });
     }
 
     return c.json({
       message: 'Post actualizado exitosamente',
       post: {
-        id: updatedPost.id,
-        title: updatedPost.title,
-        content: updatedPost.content,
-        active: updatedPost.active,
-        createdAt: updatedPost.createdAt,
-        updatedAt: updatedPost.updatedAt,
-        userId: updatedPost.userId,
+        id: updPost.id,
+        title: updPost.title,
+        content: updPost.content,
+        active: updPost.active,
+        createdAt: updPost.createdAt,
+        updatedAt: updPost.updatedAt,
+        // userId: updPost.userId,
       },
     });
   } catch (error) {
@@ -106,21 +112,12 @@ postsRoute.put('/:id', authMiddleware, async (c) => {
 // Eliminar un post (requiere autenticación)
 postsRoute.delete('/:id', authMiddleware, async (c) => {
   try {
-    const userData = c.get('jwtPayload');
-    const postId = c.req.param('id');
+    const { id } = c.req.param();
 
-    // Verificar que el post pertenezca al usuario
-    const userPosts = findPostsByUser(userData.id);
-    const post = userPosts.find((p) => p.id === postId);
-
-    if (!post) {
-      return c.json({ error: 'Post no encontrado' }, 404);
-    }
-
-    const deleted = deletePost(postId);
-
+    const db = c.get('db');
+    const deleted = await deletePost(db, id);
     if (!deleted) {
-      return c.json({ error: 'Error al eliminar el post' }, 500);
+      return c.json({ error: 'Error al eliminar el post' }, 404);
     }
 
     return c.json({ message: 'Post eliminado exitosamente' });

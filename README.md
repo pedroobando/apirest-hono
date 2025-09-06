@@ -122,7 +122,7 @@ pnpm db:generate
 Genera localmente la base de datos en nuestro cpu
 
 ```
-pnpm wrangler d1 execute blogDB  --local --file=./drizzle/migrations/0000_naive_phil_sheldon.sql
+pnpm wrangler d1 execute blogDB  --local --file=.drizzle/migrations/0003_faulty_sleepwalker.sql
 ```
 
 ### Remote - D1
@@ -153,3 +153,7 @@ Pass the `CloudflareBindings` as generics when instantiation `Hono`:
 // src/index.ts
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 ```
+
+## Guias
+
+- [guia](https://app.studyraid.com/en/read/11303/352724/authentication-middleware-setup)

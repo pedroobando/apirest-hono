@@ -1,6 +1,5 @@
 import { dbFactory } from '../main-factory';
-
-import { authMiddleware } from '../middleware/auth-midlleware';
+import { authMiddleware } from '../middleware/auth-middleware';
 import { findUserById, updateUser, deleteUser, User, findUserAll, findUserByEmail } from '../models/user';
 
 const userRoute = dbFactory.createApp();
@@ -95,7 +94,7 @@ userRoute.delete('/:id', authMiddleware, async (c) => {
   try {
     const { id } = c.req.param();
 
-    const authUser = c.get('user')!;
+    // const authUser = c.get('user')!;
 
     const db = c.get('db');
     const deleted = await deleteUser(db, id);

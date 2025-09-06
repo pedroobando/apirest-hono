@@ -36,7 +36,7 @@ export const createUser = async (
 export const findUserByEmail = async (db: DzD1Database, email: string): Promise<User | undefined> => {
   try {
     const user = await db.query.user.findFirst({
-      where: (user, { eq }) => eq(user.email, email),
+      where: (user, { eq }: any) => eq(user.email, email),
     });
 
     return user;
